@@ -4,7 +4,6 @@ using Bounce.Unmanaged;
 using System.Collections.Generic;
 using System.Linq;
 using System;
-
 using BepInEx.Configuration;
 
 namespace LordAshes
@@ -35,24 +34,24 @@ namespace LordAshes
         {
             UnityEngine.Debug.Log("Lord Ashes Grab Drop Plugin Active.");
 
-            // Post plugfin on TS main page
+            // Post plugin on TS main page
             StateDetection.Initialize(this.GetType());
 
             // Get operation order
             actOnMini = Config.Bind("Settings", "Select prop, action on mini", true);
 
             // Create grab menu entry
-            RadialUI.RadialUIPlugin.AddOnCharacter(Guid+".grab", new MapMenu.ItemArgs
+            RadialUI.RadialUIPlugin.AddOnCharacter(Guid + ".grab", new MapMenu.ItemArgs
             {
                 Action = (mmi, obj) =>
                 {
                     if (actOnMini.Value)
                     {
-                        StatMessaging.SetInfo(radialCreature, GrabDropPlugin.Guid, LocalClient.SelectedCreatureId.ToString());
+                        StatMessaging.SetInfo(radialCreature, GrabDropPlugin.Guid, "Grab," + LocalClient.SelectedCreatureId.ToString());
                     }
                     else
                     {
-                        StatMessaging.SetInfo(LocalClient.SelectedCreatureId, GrabDropPlugin.Guid, radialCreature.ToString());
+                        StatMessaging.SetInfo(LocalClient.SelectedCreatureId, GrabDropPlugin.Guid, "Grab," + radialCreature.ToString());
                     }
                 },
                 Icon = FileAccessPlugin.Image.LoadSprite("Grab.png"),
@@ -61,11 +60,18 @@ namespace LordAshes
             }, Reporter);
 
             // Create drop menu entry
-            RadialUI.RadialUIPlugin.AddOnCharacter(Guid+".drop", new MapMenu.ItemArgs
+            RadialUI.RadialUIPlugin.AddOnCharacter(Guid + ".drop", new MapMenu.ItemArgs
             {
                 Action = (mmi, obj) =>
                 {
-                    StatMessaging.SetInfo(radialCreature, GrabDropPlugin.Guid, "");
+                    if (actOnMini.Value)
+                    {
+                        StatMessaging.SetInfo(radialCreature, GrabDropPlugin.Guid, "Drop,");
+                    }
+                    else
+                    {
+                        StatMessaging.SetInfo(LocalClient.SelectedCreatureId, GrabDropPlugin.Guid, "Drop,"+radialCreature.ToString());
+                    }
                 },
                 Icon = FileAccessPlugin.Image.LoadSprite("Drop.png"),
                 Title = "Drop",
@@ -77,35 +83,47 @@ namespace LordAshes
             {
                 foreach (StatMessaging.Change change in changes)
                 {
-                    if (change.value != "")
+                    try
                     {
-                        // Grab
-                        CreatureBoardAsset asset;
-                        CreaturePresenter.TryGetAsset(change.cid, out asset);
-                        if (asset != null)
+                        string[] values = change.value.Split(',');
+
+                        if (values[0] == "Grab")
                         {
-                            CreatureBoardAsset child;
-                            CreaturePresenter.TryGetAsset(new CreatureGuid(change.value), out child);
-                            if (child != null)
+                            // Grab
+                            CreatureBoardAsset asset;
+                            CreaturePresenter.TryGetAsset(change.cid, out asset);
+                            if (asset != null)
                             {
-                                Debug.Log(StatMessaging.GetCreatureName(asset.Creature) + " grabs '" + child.Creature.Name + "'");
-                                child.transform.SetParent(asset.transform);
+                                CreatureBoardAsset child;
+                                CreaturePresenter.TryGetAsset(new CreatureGuid(values[1]), out child);
+                                if (child != null)
+                                {
+                                    Debug.Log(StatMessaging.GetCreatureName(asset.Creature) + " grabs '" + child.Creature.Name + "'");
+                                    child.transform.SetParent(asset.transform);
+                                }
                             }
                         }
-                    }
-                    else
-                    {
-                        // Drop
-                        CreatureBoardAsset asset;
-                        CreaturePresenter.TryGetAsset(change.cid, out asset);
-                        foreach (Transform child in asset.transform.Children())
+                        else if (values[0] == "Drop")
                         {
-                            if ((child.gameObject.name.StartsWith("Custom:")) || (child.gameObject.name.Contains("(Clone)")))
+                            // Drop
+                            CreatureBoardAsset asset;
+                            CreaturePresenter.TryGetAsset(change.cid, out asset);
+                            foreach (Transform child in asset.transform.Children())
                             {
-                                Debug.Log(StatMessaging.GetCreatureName(asset.Creature) + " drops '" + child.gameObject.name + "'");
-                                child.transform.SetParent(null);
+                                if ((child.gameObject.name.StartsWith("Custom:")) || (child.gameObject.name.Contains("(Clone)")))
+                                {
+                                    Debug.Log(StatMessaging.GetCreatureName(asset.Creature) + " drops '" + child.gameObject.name + "'");
+                                    child.transform.SetParent(null);
+                                }
                             }
                         }
+                        else
+                        {
+                            Debug.Log("Error: Unknown value prefix in GrabDrop while resolving action: " + values[0]);
+                        }
+                    }catch(Exception ex)
+                    {
+                        Debug.LogException(ex);
                     }
                 }
             });
