@@ -96,7 +96,8 @@ namespace LordAshes
                             //Find certain transforms to preserve
                             foreach (Transform child in asset.gameObject.transform.Children())
                             {
-                                if (child.name == "MoveableOffset" || child.gameObject.name.StartsWith("Custom:") /*|| child.gameObject.name.Contains("(Clone)")*/)
+                                //Debug.Log("Transform Name: " + child.name + " , Game Object Name: " + child.gameObject.name);
+                                if (child.name == "MoveableOffset")
                                 {
                                     //Debug.Log("Preserving '" + child.name + "' transform for safe delete");
                                     tempTransformList.Add(child);
@@ -134,6 +135,11 @@ namespace LordAshes
             {
                 foreach (StatMessaging.Change change in changes)
                 {
+                    if (change.action == StatMessaging.ChangeType.removed)
+                    {
+                        //Change skipped in Grab Callback due to it being a remove which we do not currently care about
+                        continue;
+                    }
                     try
                     {
                         // Grab
@@ -147,6 +153,7 @@ namespace LordAshes
                             {
                                 Debug.Log(StatMessaging.GetCreatureName(asset.Creature) + " grabs '" + child.Creature.Name + "'");
                                 child.transform.SetParent(asset.transform);
+                                StatMessaging.ClearInfo(change.cid, GrabDropPlugin.Guid + ".drop");
                             }
                         }
                     }
@@ -162,6 +169,11 @@ namespace LordAshes
             {
                 foreach (StatMessaging.Change change in changes)
                 {
+                    if (change.action == StatMessaging.ChangeType.removed)
+                    {
+                        //Change skipped in Drop Callback due to it being a remove which we do not currently care about
+                        continue;
+                    }
                     try
                     {
                         // Drop
@@ -177,6 +189,7 @@ namespace LordAshes
                                 {
                                     Debug.Log(StatMessaging.GetCreatureName(asset.Creature) + " drops '" + StatMessaging.GetCreatureName(droppedChild.Creature) + "'");
                                     child.transform.SetParent(null);
+                                    StatMessaging.ClearInfo(change.cid, GrabDropPlugin.Guid + ".grab");
                                     break;
                                 }
                             }
