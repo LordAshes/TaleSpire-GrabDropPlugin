@@ -2,9 +2,7 @@
 using BepInEx;
 using Bounce.Unmanaged;
 using System.Collections.Generic;
-using System.Linq;
 using System;
-
 using BepInEx.Configuration;
 
 namespace LordAshes
@@ -35,24 +33,24 @@ namespace LordAshes
         {
             UnityEngine.Debug.Log("Lord Ashes Grab Drop Plugin Active.");
 
-            // Post plugfin on TS main page
+            // Post plugin on TS main page
             StateDetection.Initialize(this.GetType());
 
             // Get operation order
             actOnMini = Config.Bind("Settings", "Select prop, action on mini", true);
 
             // Create grab menu entry
-            RadialUI.RadialUIPlugin.AddOnCharacter(Guid+".grab", new MapMenu.ItemArgs
+            RadialUI.RadialUIPlugin.AddOnCharacter(Guid + ".grab", new MapMenu.ItemArgs
             {
                 Action = (mmi, obj) =>
                 {
                     if (actOnMini.Value)
                     {
-                        StatMessaging.SetInfo(radialCreature, GrabDropPlugin.Guid, LocalClient.SelectedCreatureId.ToString());
+                        StatMessaging.SetInfo(radialCreature, GrabDropPlugin.Guid + ".grab", LocalClient.SelectedCreatureId.ToString());
                     }
                     else
                     {
-                        StatMessaging.SetInfo(LocalClient.SelectedCreatureId, GrabDropPlugin.Guid, radialCreature.ToString());
+                        StatMessaging.SetInfo(LocalClient.SelectedCreatureId, GrabDropPlugin.Guid + ".grab", radialCreature.ToString());
                     }
                 },
                 Icon = FileAccessPlugin.Image.LoadSprite("Grab.png"),
@@ -61,23 +59,82 @@ namespace LordAshes
             }, Reporter);
 
             // Create drop menu entry
-            RadialUI.RadialUIPlugin.AddOnCharacter(Guid+".drop", new MapMenu.ItemArgs
+            RadialUI.RadialUIPlugin.AddOnCharacter(Guid + ".drop", new MapMenu.ItemArgs
             {
                 Action = (mmi, obj) =>
                 {
-                    StatMessaging.SetInfo(radialCreature, GrabDropPlugin.Guid, "");
+                    if (actOnMini.Value)
+                    {
+                        StatMessaging.SetInfo(radialCreature, GrabDropPlugin.Guid + ".drop", LocalClient.SelectedCreatureId.ToString());
+                    }
+                    else
+                    {
+                        StatMessaging.SetInfo(LocalClient.SelectedCreatureId, GrabDropPlugin.Guid + ".drop", radialCreature.ToString());
+                    }
                 },
                 Icon = FileAccessPlugin.Image.LoadSprite("Drop.png"),
                 Title = "Drop",
                 CloseMenuOnActivate = true
             }, Reporter);
 
-            // Subscribe to grab and drop requests
-            StatMessaging.Subscribe(GrabDropPlugin.Guid, (changes) =>
+            // Create safe Kill menu entry      
+            RadialUI.RadialUIPlugin.AddOnRemoveSubmenuKill(Guid + ".removeKill", "Kill Creature"); //Remove vanilla TS Kill Menu
+            RadialUI.RadialUIPlugin.AddOnSubmenuKill(Guid + ".safeKill", new MapMenu.ItemArgs //Replace with GrabDrop safe alternative
+            {
+                Action = (mmi, obj) =>
+                {
+                    CreatureBoardAsset asset;
+                    CreaturePresenter.TryGetAsset(radialCreature, out asset);
+
+                    if (asset != null)
+                    {
+                        try
+                        {
+                            Debug.Log("Beginning GrabDrop Safe Kill");
+                            List<Transform> tempTransformList = new List<Transform>();
+
+                            //Find certain transforms to preserve
+                            foreach (Transform child in asset.gameObject.transform.Children())
+                            {
+                                if (child.name == "MoveableOffset" || child.gameObject.name.StartsWith("Custom:") /*|| child.gameObject.name.Contains("(Clone)")*/)
+                                {
+                                    //Debug.Log("Preserving '" + child.name + "' transform for safe delete");
+                                    tempTransformList.Add(child);
+                                }
+                            }
+
+                            //It's imperative we remove the parent child relationship with any dragged creatures before deleting the parent
+                            asset.gameObject.transform.DetachChildren();  
+
+                            //Certain transforms must be preserved to be gracefully disposed of by the engine when the parent object is deleted
+                            if (tempTransformList.Count > 0)
+                            {   
+                                foreach (Transform tempTransform in tempTransformList)
+                                {
+                                    tempTransform.SetParent(asset.gameObject.transform);
+                                }
+                            }
+
+                            asset.Creature.BoardAsset.RequestDelete(); //Perform the actual deletion
+                            Debug.Log("GrabDrop Safe Kill Complete");
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.LogException(ex);
+                        }
+                    }
+                },
+                Icon = Icons.GetIconSprite("remove"),
+                Title = "Kill Creature",
+                CloseMenuOnActivate = true
+            }, Reporter);
+
+            // Subscribe to grab requests
+            StatMessaging.Subscribe(GrabDropPlugin.Guid + ".grab", (changes) =>
             {
                 foreach (StatMessaging.Change change in changes)
                 {
-                    if (change.value != "")
+                    try
                     {
                         // Grab
                         CreatureBoardAsset asset;
@@ -93,19 +150,41 @@ namespace LordAshes
                             }
                         }
                     }
-                    else
+                    catch (Exception ex)
+                    {
+                        Debug.LogException(ex);
+                    }
+                }
+            });
+
+            // Subscribe to drop requests
+            StatMessaging.Subscribe(GrabDropPlugin.Guid + ".drop", (changes) =>
+            {
+                foreach (StatMessaging.Change change in changes)
+                {
+                    try
                     {
                         // Drop
                         CreatureBoardAsset asset;
                         CreaturePresenter.TryGetAsset(change.cid, out asset);
-                        foreach (Transform child in asset.transform.Children())
+                        if (asset != null)
                         {
-                            if ((child.gameObject.name.StartsWith("Custom:")) || (child.gameObject.name.Contains("(Clone)")))
+                            CreatureBoardAsset droppedChild;
+                            CreaturePresenter.TryGetAsset(new CreatureGuid(change.value), out droppedChild);
+                            foreach (Transform child in asset.transform.Children())
                             {
-                                Debug.Log(StatMessaging.GetCreatureName(asset.Creature) + " drops '" + child.gameObject.name + "'");
-                                child.transform.SetParent(null);
+                                if (child.gameObject == droppedChild.gameObject)
+                                {
+                                    Debug.Log(StatMessaging.GetCreatureName(asset.Creature) + " drops '" + StatMessaging.GetCreatureName(droppedChild.Creature) + "'");
+                                    child.transform.SetParent(null);
+                                    break;
+                                }
                             }
                         }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogException(ex);
                     }
                 }
             });
