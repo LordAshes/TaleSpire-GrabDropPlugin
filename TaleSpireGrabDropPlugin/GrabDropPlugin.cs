@@ -16,6 +16,7 @@ namespace LordAshes
         // Plugin info
         public const string Guid = "org.lordashes.plugins.grabdrop";
         public const string Version = "1.0.0.0";
+        public const string StatesPluginGuid = "org.lordashes.plugins.states";
 
         // Content directory
         private string dir = UnityEngine.Application.dataPath.Substring(0, UnityEngine.Application.dataPath.LastIndexOf("/")) + "/TaleSpire_CustomData/";
@@ -105,11 +106,11 @@ namespace LordAshes
                             }
 
                             //It's imperative we remove the parent child relationship with any dragged creatures before deleting the parent
-                            asset.gameObject.transform.DetachChildren();  
+                            asset.gameObject.transform.DetachChildren();
 
                             //Certain transforms must be preserved to be gracefully disposed of by the engine when the parent object is deleted
                             if (tempTransformList.Count > 0)
-                            {   
+                            {
                                 foreach (Transform tempTransform in tempTransformList)
                                 {
                                     tempTransform.SetParent(asset.gameObject.transform);
@@ -151,9 +152,35 @@ namespace LordAshes
                             CreaturePresenter.TryGetAsset(new CreatureGuid(change.value), out child);
                             if (child != null)
                             {
+                                string grabberStatesString = "";
+                                grabberStatesString = StatMessaging.ReadInfo(asset.Creature.CreatureId, StatesPluginGuid);
+
+                                if (!grabberStatesString.Contains("Leading"))
+                                {
+                                    if (grabberStatesString == "")
+                                        grabberStatesString = "Leading";
+                                    else
+                                        grabberStatesString = "Leading," + grabberStatesString;
+
+                                    StatMessaging.SetInfo(asset.Creature.CreatureId, StatesPluginGuid, grabberStatesString);
+                                }
+
                                 Debug.Log(StatMessaging.GetCreatureName(asset.Creature) + " grabs '" + child.Creature.Name + "'");
                                 child.transform.SetParent(asset.transform);
                                 StatMessaging.ClearInfo(change.cid, GrabDropPlugin.Guid + ".drop");
+
+                                string grabbeeStatesString = "";
+                                grabbeeStatesString = StatMessaging.ReadInfo(child.Creature.CreatureId, StatesPluginGuid);
+
+                                if (!grabbeeStatesString.Contains("Following: " + StatMessaging.GetCreatureName(asset.Creature)))
+                                {
+                                    if (grabbeeStatesString == "")
+                                        grabbeeStatesString = "Following: " + StatMessaging.GetCreatureName(asset.Creature);
+                                    else
+                                        grabbeeStatesString = "Following: " + StatMessaging.GetCreatureName(asset.Creature) + "," + grabbeeStatesString;
+
+                                    StatMessaging.SetInfo(child.Creature.CreatureId, StatesPluginGuid, grabbeeStatesString);
+                                }
                             }
                         }
                     }
@@ -183,13 +210,51 @@ namespace LordAshes
                         {
                             CreatureBoardAsset droppedChild;
                             CreaturePresenter.TryGetAsset(new CreatureGuid(change.value), out droppedChild);
+
                             foreach (Transform child in asset.transform.Children())
                             {
-                                if (child.gameObject == droppedChild.gameObject)
+                                if (child.gameObject == droppedChild.gameObject) //The child being dropped is one of our children
                                 {
+                                    if (asset.transform.childCount == 2) //We only have 2 children left, our baseline moveableoffset, and the child we are about to drop
+                                    {
+                                        string grabberStatesString = "";
+                                        grabberStatesString = StatMessaging.ReadInfo(asset.Creature.CreatureId, StatesPluginGuid);
+
+                                        if (grabberStatesString.Contains("Leading,"))
+                                        {
+                                            grabberStatesString = grabberStatesString.Replace("Leading,", "");
+                                        }
+                                        else if (grabberStatesString.Contains("Leading"))
+                                        {
+                                            grabberStatesString = "";
+                                        }
+
+                                        StatMessaging.SetInfo(asset.Creature.CreatureId, StatesPluginGuid, grabberStatesString);
+                                    }
+
                                     Debug.Log(StatMessaging.GetCreatureName(asset.Creature) + " drops '" + StatMessaging.GetCreatureName(droppedChild.Creature) + "'");
-                                    child.transform.SetParent(null);
+
+                                    child.transform.SetParent(null); //Here we actually drop the child
+                                    
                                     StatMessaging.ClearInfo(change.cid, GrabDropPlugin.Guid + ".grab");
+
+                                    string grabbeeStatesString = "";
+                                    grabbeeStatesString = StatMessaging.ReadInfo(droppedChild.Creature.CreatureId, StatesPluginGuid);
+
+                                    if (grabbeeStatesString.Contains("Following: " + StatMessaging.GetCreatureName(asset.Creature)))
+                                    {
+                                        if (grabbeeStatesString.Contains("Following: " + StatMessaging.GetCreatureName(asset.Creature) + ","))
+                                        {
+                                            grabbeeStatesString = grabbeeStatesString.Replace("Following: " + StatMessaging.GetCreatureName(asset.Creature) + ",", "");
+                                        }
+                                        else if (grabbeeStatesString.Contains("Following: " + StatMessaging.GetCreatureName(asset.Creature)))
+                                        {
+                                            grabbeeStatesString = grabbeeStatesString.Replace("Following: " + StatMessaging.GetCreatureName(asset.Creature), "");
+                                        }
+
+                                        StatMessaging.SetInfo(droppedChild.Creature.CreatureId, StatesPluginGuid, grabbeeStatesString);
+                                    }
+
                                     break;
                                 }
                             }
