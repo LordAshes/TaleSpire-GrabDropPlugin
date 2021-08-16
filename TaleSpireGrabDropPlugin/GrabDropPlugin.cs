@@ -98,7 +98,7 @@ namespace LordAshes
                             foreach (Transform child in asset.gameObject.transform.Children())
                             {
                                 //Debug.Log("Transform Name: " + child.name + " , Game Object Name: " + child.gameObject.name);
-                                if (child.name == "MoveableOffset")
+                                if (child.name == "MoveableOffset" || child.name.StartsWith("Effect"))
                                 {
                                     //Debug.Log("Preserving '" + child.name + "' transform for safe delete");
                                     tempTransformList.Add(child);
