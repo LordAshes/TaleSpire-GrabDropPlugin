@@ -60,16 +60,17 @@
       <HintPath>D:\Steam\steamapps\common\TaleSpire\TaleSpire_Data\Managed\Bouncyrock.TaleSpire.Runtime.dll</HintPath>
     </Reference>
     <Reference Include="FileAccessPlugin">
-      <HintPath>..\..\..\..\AppData\Roaming\r2modmanPlus-local\TaleSpire\profiles\Plugins\BepInEx\plugins\LordAshes-FileAccessPlugin\FileAccessPlugin.dll</HintPath>
+      <HintPath>..\..\TaleSpireFileAccessPlugin\TaleSpireFileAccessPlugin\bin\Debug\FileAccessPlugin.dll</HintPath>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.13.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
-    <Reference Include="RadialUI">
-      <HintPath>..\..\..\..\AppData\Roaming\r2modmanPlus-local\TaleSpire\profiles\Plugins\BepInEx\plugins\HolloFox_TS-RadialUIPlugin\RadialUI.dll</HintPath>
+    <Reference Include="RadialUI, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\AppData\Roaming\r2modmanPlus-local\TaleSpire\profiles\Modded\BepInEx\plugins\HolloFox_TS-RadialUIPlugin\RadialUI.dll</HintPath>
     </Reference>
     <Reference Include="StatMessaging">
-      <HintPath>..\..\TaleSpireStatMessaging\TaleSpireStatMessaging\bin\Debug\StatMessaging.dll</HintPath>
+      <HintPath>..\..\TaleSpireStatMessagingPlugin\TaleSpireStatMessaging\bin\Debug\StatMessaging.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />

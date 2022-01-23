@@ -15,7 +15,7 @@ namespace LordAshes
     {
         // Plugin info
         public const string Guid = "org.lordashes.plugins.grabdrop";
-        public const string Version = "1.4.0.0";
+        public const string Version = "1.4.5.0";
         public const string StatesPluginGuid = "org.lordashes.plugins.states";
 
         // Content directory
